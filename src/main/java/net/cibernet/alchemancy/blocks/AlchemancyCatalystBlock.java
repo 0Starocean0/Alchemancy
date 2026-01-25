@@ -6,11 +6,15 @@ import net.cibernet.alchemancy.blocks.blockentities.ItemStackHolderBlockEntity;
 import net.cibernet.alchemancy.crafting.AbstractForgeRecipe;
 import net.cibernet.alchemancy.crafting.ForgeRecipeGrid;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesHelper;
+import net.cibernet.alchemancy.network.S2CDiscoverCodexIngredientsPayload;
+import net.cibernet.alchemancy.network.S2CUnlockCodexEntriesPayload;
 import net.cibernet.alchemancy.registries.*;
 import net.cibernet.alchemancy.util.CommonUtils;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.FastColor;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
@@ -31,9 +35,12 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.BooleanProperty;
+import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -70,23 +77,48 @@ public class AlchemancyCatalystBlock extends TransparentBlock implements EntityB
 	@Override
 	protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult)
 	{
-		if(stack.getItem() instanceof DyeItem dye && level.getBlockEntity(pos) instanceof AlchemancyCatalystBlockEntity catalyst)
-		{
-			int tint = CommonUtils.getPropertyDrivenTint(stack);
+		boolean isDye = stack.getItem() instanceof DyeItem;
 
-			if(!catalyst.getCrystalTexture().equals(dye.getDyeColor().getName()) ||
-					catalyst.getTint() != CommonUtils.getPropertyDrivenTint(stack) ||
-					InfusedPropertiesHelper.hasInfusedProperty(stack, AlchemancyProperties.MUFFLED) != catalyst.silent)
+		if(level.getBlockEntity(pos) instanceof AlchemancyCatalystBlockEntity catalyst && (isDye || stack.is(AlchemancyItems.CHROMA_LENS)))
+		{
+			int[] tint = getTint(stack);
+			boolean success = false;
+			if(tint.length == 0)
+				tint = null;
+
+			if(stack.getItem() instanceof DyeItem dye && !catalyst.getCrystalTexture().equals(dye.getDyeColor().getName()))
 			{
 				catalyst.setCrystalTexture(dye.getDyeColor());
-				catalyst.setTint(tint);
-				catalyst.silent = InfusedPropertiesHelper.hasInfusedProperty(stack, AlchemancyProperties.MUFFLED);
+				success = true;
+			}
 
-				stack.consume(1, player);
+			if(!Arrays.equals(catalyst.getTintColors(), tint))
+			{
+				catalyst.setTint(tint);
+				success = true;
+			}
+
+			boolean muffled = InfusedPropertiesHelper.hasInfusedProperty(stack, AlchemancyProperties.MUFFLED);
+			if(muffled != catalyst.silent) {
+				catalyst.silent = muffled;
+				success = true;
+			}
+
+			if(success)
+			{
+				if(isDye)
+					stack.consume(1, player);
 				return ItemInteractionResult.SUCCESS;
 			}
 		}
 		return super.useItemOn(stack, state, level, pos, player, hand, hitResult);
+	}
+
+	private int[] getTint(ItemStack stack) {
+
+		int alpha = FastColor.ARGB32.alpha(CommonUtils.getPropertyDrivenTint(stack));
+		int[] tintedColors = Arrays.stream(AlchemancyProperties.TINTED.get().getData(stack)).mapToInt(c -> FastColor.ARGB32.color(alpha, c)).toArray();
+		return tintedColors.length == 0 ? new int[] {FastColor.ARGB32.color(alpha, 0xFFFFFF)} : tintedColors;
 	}
 
 	@Override
@@ -116,6 +148,8 @@ public class AlchemancyCatalystBlock extends TransparentBlock implements EntityB
 		if(level.getBlockState(forgePos).is(AlchemancyBlocks.ALCHEMANCY_FORGE) && level.getBlockEntity(forgePos) instanceof ItemStackHolderBlockEntity forge)
 		{
 			ForgeRecipeGrid grid = new ForgeRecipeGrid(level, forgePos, forge);
+			var itemsToDiscover = grid.getItemPedestals().stream().filter(pedestal -> !pedestal.isEmpty()).map(pedestal -> BuiltInRegistries.ITEM.getKey(pedestal.getItem().getItem())).toList();
+
 
 			AtomicBoolean loop = new AtomicBoolean(true);
 			for(int i = 0; i < 128 && loop.get() && !grid.isPerformingTransmutation(); i++)
@@ -133,7 +167,14 @@ public class AlchemancyCatalystBlock extends TransparentBlock implements EntityB
 
 
 			if(player instanceof ServerPlayer serverPlayer)
-				AlchemancyCriteriaTriggers.DISCOVER_PROPERTY.get().trigger(serverPlayer, output);
+			{
+				PacketDistributor.sendToPlayer(serverPlayer, new S2CUnlockCodexEntriesPayload(output));
+				if(!itemsToDiscover.isEmpty())
+				{
+					AlchemancyCriteriaTriggers.DISCOVER_PROPERTY.get().trigger(serverPlayer, output);
+					PacketDistributor.sendToPlayer(serverPlayer, new S2CDiscoverCodexIngredientsPayload(itemsToDiscover));
+				}
+			}
 
 			if(grid.shouldConsumeWarped())
 				InfusedPropertiesHelper.removeProperty(output, AlchemancyProperties.WARPED);
@@ -146,7 +187,10 @@ public class AlchemancyCatalystBlock extends TransparentBlock implements EntityB
 			ItemStackHolderBlockEntity.dropItem(level, forgePos, output);
 
 			if(level.getBlockEntity(catalystPos) instanceof AlchemancyCatalystBlockEntity catalyst)
+			{
 				catalyst.playAnimation(false);
+				level.gameEvent(GameEvent.BLOCK_ACTIVATE, catalystPos, new GameEvent.Context(player, level.getBlockState(catalystPos)));
+			}
 		}
 	}
 

@@ -2,6 +2,7 @@ package net.cibernet.alchemancy.crafting;
 
 import net.cibernet.alchemancy.advancements.predicates.ForgeRecipePredicate;
 import net.cibernet.alchemancy.blocks.blockentities.EssenceContainer;
+import net.cibernet.alchemancy.item.components.PropertyDataComponent;
 import net.cibernet.alchemancy.properties.Property;
 import net.cibernet.alchemancy.registries.AlchemancyItems;
 import net.cibernet.alchemancy.registries.AlchemancyRecipeTypes;
@@ -26,9 +27,9 @@ public class ForgeItemRecipe extends AbstractForgeRecipe<ItemStack>
 		return checkParadoxical(input.getCurrentOutput()) && super.matches(input, level);
 	}
 
-	public ForgeItemRecipe(Optional<Ingredient> catalyst, Optional<String> catalystName, List<EssenceContainer> essences, List<Ingredient> infusables, List<Holder<Property>> infusedProperties, ItemStack result)
+	public ForgeItemRecipe(Optional<Ingredient> catalyst, Optional<String> catalystName, List<Ingredient> infusables, List<Holder<Property>> infusedProperties, ItemStack result)
 	{
-		super(catalyst.isPresent() ? catalyst : Optional.of(Ingredient.EMPTY), catalystName, essences, infusables, infusedProperties);
+		super(catalyst.isPresent() ? catalyst : Optional.of(Ingredient.EMPTY), catalystName, infusables, infusedProperties);
 		this.result = result;
 
 	}
@@ -58,8 +59,9 @@ public class ForgeItemRecipe extends AbstractForgeRecipe<ItemStack>
 			if(ItemStack.isSameItem(result, input.getCurrentOutput()))
 				result.setCount(result.getCount() + input.getCurrentOutput().getCount() - 1);
 
+
 			result.set(AlchemancyItems.Components.INFUSED_PROPERTIES, output.get(AlchemancyItems.Components.INFUSED_PROPERTIES));
-			result.set(AlchemancyItems.Components.PROPERTY_DATA, output.get(AlchemancyItems.Components.PROPERTY_DATA));
+			PropertyDataComponent.mergeData(result, output);
 			return result;
 		};
 	}

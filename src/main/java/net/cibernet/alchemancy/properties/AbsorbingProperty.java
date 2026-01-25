@@ -34,7 +34,7 @@ public class AbsorbingProperty extends Property
 	{
 		if(shouldRepair(stack) && stack.getItem().isValidRepairItem(stack, otherStack))
 		{
-			stack.setDamageValue(stack.getDamageValue() - Math.min(stack.getDamageValue(), stack.getMaxDamage() / 4));
+			repairItem(stack, stack.getMaxDamage() / 4);
 			otherStack.shrink(1);
 			isCancelled.set(true);
 		}
@@ -78,7 +78,7 @@ public class AbsorbingProperty extends Property
 			if(shouldRepair(stack))
 				scanInventoryAndConsume(stack, player, consumeStack -> stack.getItem().isValidRepairItem(stack, consumeStack), consumeStack -> {
 
-					stack.setDamageValue(stack.getDamageValue() - Math.min(stack.getDamageValue(), stack.getMaxDamage() / 4));
+					repairItem(stack, stack.getMaxDamage() / 4);
 					consumeStack.shrink(1);
 				});
 			else if(InfusedPropertiesHelper.hasProperty(stack, AlchemancyProperties.CLAY_MOLD))
@@ -118,7 +118,7 @@ public class AbsorbingProperty extends Property
 
 	public static boolean shouldRepair(ItemStack stack)
 	{
-		return stack.isRepairable() && stack.getDamageValue() >= stack.getMaxDamage() / 4;
+		return stack.isRepairable() && (canRepair(stack, stack.getMaxDamage() / 4));
 	}
 
 	@Override

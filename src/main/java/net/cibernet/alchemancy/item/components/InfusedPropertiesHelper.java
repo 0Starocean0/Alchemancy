@@ -1,6 +1,7 @@
 package net.cibernet.alchemancy.item.components;
 
 import net.cibernet.alchemancy.properties.Property;
+import net.cibernet.alchemancy.properties.SparklingProperty;
 import net.cibernet.alchemancy.properties.data.IDataHolder;
 import net.cibernet.alchemancy.registries.AlchemancyItems;
 import net.cibernet.alchemancy.registries.AlchemancyProperties;
@@ -12,6 +13,7 @@ import net.minecraft.tags.TagKey;
 import net.minecraft.util.Unit;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -23,12 +25,15 @@ import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
 
-import static net.cibernet.alchemancy.registries.AlchemancyItems.Components.INFUSED_PROPERTIES;
-import static net.cibernet.alchemancy.registries.AlchemancyItems.Components.INNATE_PROPERTIES;
+import static net.cibernet.alchemancy.registries.AlchemancyItems.Components.*;
 
 public class InfusedPropertiesHelper
 {
 	public static boolean hasItemWithProperty(LivingEntity user, Holder<Property> property, boolean checkAuxiliary)
+	{
+		return hasItemWithProperty(user, property, checkAuxiliary, EquipmentSlotGroup.ANY);
+	}
+	public static boolean hasItemWithProperty(LivingEntity user, Holder<Property> property, boolean checkAuxiliary, EquipmentSlotGroup equipmentSlots)
 	{
 		if(checkAuxiliary && user instanceof Player player)
 		{
@@ -46,6 +51,8 @@ public class InfusedPropertiesHelper
 		}
 
 		for (EquipmentSlot slot : EquipmentSlot.values()) {
+			if(!equipmentSlots.test(slot))
+				continue;
 			ItemStack stack = user.getItemBySlot(slot);
 			if(InfusedPropertiesHelper.hasProperty(stack, property))
 			{
@@ -57,11 +64,10 @@ public class InfusedPropertiesHelper
 
 	public static boolean hasProperty(ItemStack stack, Holder<Property> property)
 	{
-		if(stack == null || stack.isEmpty() || property == null || property.is(AlchemancyTags.Properties.DISABLED))
+		if(!property.isBound() || stack == null || stack.isEmpty()|| property == null || property.is(AlchemancyTags.Properties.DISABLED))
 			return false;
 
 		boolean toggled = AlchemancyProperties.TOGGLEABLE.get().getData(stack);
-
 
 
 		return ((toggled || !hasInfusedProperty(stack, AlchemancyProperties.TOGGLEABLE)) && hasInfusedProperty(stack, property))
@@ -74,7 +80,7 @@ public class InfusedPropertiesHelper
 		if(stack == null || stack.isEmpty() || propertyTag == null)
 			return false;
 
-		boolean toggled = AlchemancyProperties.TOGGLEABLE.get().    getData(stack);
+		boolean toggled = AlchemancyProperties.TOGGLEABLE.get().getData(stack);
 
 		return ((toggled || !hasInfusedProperty(stack, AlchemancyProperties.TOGGLEABLE)) && hasInfusedProperty(stack, propertyTag))
 			|| ((toggled || !hasInnateProperty(stack, AlchemancyProperties.TOGGLEABLE)) && hasInnateProperty(stack, propertyTag))
@@ -97,27 +103,31 @@ public class InfusedPropertiesHelper
 
 	public static boolean hasInfusedProperty(ItemStack stack, Holder<Property> property)
 	{
-		return stack != null &&  !stack.isEmpty() && stack.has(INFUSED_PROPERTIES.get()) && stack.get(INFUSED_PROPERTIES.get()).hasProperty(property);
+		return stack != null && !stack.isEmpty() && INFUSED_PROPERTIES.isBound() &&
+				stack.has(INFUSED_PROPERTIES.get()) && stack.get(INFUSED_PROPERTIES.get()).hasProperty(property);
 	}
 
 	public static boolean hasInnateProperty(ItemStack stack, Holder<Property> property)
 	{
-		return stack != null &&  !stack.isEmpty() && stack.has(INNATE_PROPERTIES.get()) && stack.get(INNATE_PROPERTIES.get()).hasProperty(property);
+		return stack != null && INNATE_PROPERTIES.isBound() &&
+				!stack.isEmpty() && stack.has(INNATE_PROPERTIES.get()) && stack.get(INNATE_PROPERTIES.get()).hasProperty(property);
 	}
 
 	public static boolean hasDormantProperty(ItemStack stack, Holder<Property> property)
 	{
-		return stack != null &&  !stack.isEmpty() && AlchemancyProperties.getDormantProperties(stack).contains(property);
+		return stack != null && !stack.isEmpty() && AlchemancyProperties.getDormantProperties(stack).contains(property);
 	}
 
 	public static boolean hasInfusedProperty(ItemStack stack, TagKey<Property> propertyTag)
 	{
-		return stack != null &&  !stack.isEmpty() && stack.has(INFUSED_PROPERTIES.get()) && stack.get(INFUSED_PROPERTIES.get()).hasProperty(propertyTag);
+		return stack != null && !stack.isEmpty() && INFUSED_PROPERTIES.isBound() &&
+				!stack.is(AlchemancyTags.Items.DISABLES_INFUSION_ABILITIES) && stack.has(INFUSED_PROPERTIES.get()) && stack.get(INFUSED_PROPERTIES.get()).hasProperty(propertyTag);
 	}
 
 	public static boolean hasInnateProperty(ItemStack stack, TagKey<Property> propertyTag)
 	{
-		return stack != null && !stack.isEmpty() && stack.has(INNATE_PROPERTIES.get()) && stack.get(INNATE_PROPERTIES.get()).hasProperty(propertyTag);
+		return stack != null && !stack.isEmpty() && INNATE_PROPERTIES.isBound() &&
+				stack.has(INNATE_PROPERTIES.get()) && stack.get(INNATE_PROPERTIES.get()).hasProperty(propertyTag);
 	}
 
 	public static boolean hasDormantProperty(ItemStack stack, TagKey<Property> propertyTag)
@@ -135,18 +145,23 @@ public class InfusedPropertiesHelper
 
 	public static void forEachProperty(ItemStack stack, Consumer<Holder<Property>> consumer)
 	{
+		forEachProperty(stack, consumer, true);
+	}
+
+	public static void forEachProperty(ItemStack stack, Consumer<Holder<Property>> consumer, boolean checkToggle)
+	{
 		if(stack == null || stack.isEmpty())
 			return;
 
-		boolean toggled = AlchemancyProperties.TOGGLEABLE.get().getData(stack);
+		boolean toggled = !checkToggle || (AlchemancyProperties.TOGGLEABLE.isBound() && AlchemancyProperties.TOGGLEABLE.get().getData(stack));
 
-		if (stack.has(INFUSED_PROPERTIES.get()))
+		if (INFUSED_PROPERTIES.isBound() && stack.has(INFUSED_PROPERTIES.get()) && !stack.is(AlchemancyTags.Items.DISABLES_INFUSION_ABILITIES))
 		{
 			if(!toggled && hasInfusedProperty(stack, AlchemancyProperties.TOGGLEABLE))
 				consumer.accept(AlchemancyProperties.TOGGLEABLE);
 			else stack.get(INFUSED_PROPERTIES.get()).forEachProperty(consumer);
 		}
-		if (!hasProperty(stack, AlchemancyProperties.DEAD) && stack.has(INNATE_PROPERTIES.get()))
+		if (INNATE_PROPERTIES.isBound() && !hasProperty(stack, AlchemancyProperties.DEAD) && stack.has(INNATE_PROPERTIES.get()))
 		{
 			if(!toggled && hasInnateProperty(stack, AlchemancyProperties.TOGGLEABLE))
 				consumer.accept(AlchemancyProperties.TOGGLEABLE);
@@ -158,7 +173,7 @@ public class InfusedPropertiesHelper
 
 	public static void forEachInnateProperty(ItemStack stack, Consumer<Holder<Property>> consumer)
 	{
-		if(stack == null || stack.isEmpty())
+		if(!INNATE_PROPERTIES.isBound() || stack == null || stack.isEmpty())
 			return;
 
 		boolean toggled = AlchemancyProperties.TOGGLEABLE.get().getData(stack);
@@ -171,6 +186,13 @@ public class InfusedPropertiesHelper
 		}
 		if(hasInnateProperty(stack, AlchemancyProperties.AWAKENED))
 			AlchemancyProperties.getDormantProperties(stack).forEach(consumer);
+	}
+
+	public static boolean canInfuseWithProperty(ItemStack stack, Holder<Property> propertyHolder) {
+
+		if(stack.is(AlchemancyItems.SPARKLING_BAND))
+			return SparklingProperty.hasParticles(propertyHolder);
+		return true; //TODO mod event for people to do stuff with addons
 	}
 
 	public static ItemStack addProperty(ItemStack stack, Holder<Property> property)
@@ -217,11 +239,16 @@ public class InfusedPropertiesHelper
 			while(true)
 			{
 				truncateProperties(stack, getInfusionSlots(stack));
-				List<Holder<Property>> infusedProperties = getInfusedProperties(stack);
-				if(getInfusionSlots(stack) >= infusedProperties.size() - infusedProperties.stream().filter(propertyHolder -> propertyHolder.is(AlchemancyTags.Properties.SLOTLESS)).count())
+				if(getRemainingInfusionSlots(stack) >= 0)
 					return stack;
 			}
 		return stack;
+	}
+
+	public static int getRemainingInfusionSlots(ItemStack stack)
+	{
+		List<Holder<Property>> infusedProperties = getInfusedProperties(stack);
+		return getInfusionSlots(stack) - (infusedProperties.size() - (int) infusedProperties.stream().filter(propertyHolder -> propertyHolder.is(AlchemancyTags.Properties.SLOTLESS)).count());
 	}
 
 	public static ItemStack truncateProperties(ItemStack stack, int limit)
@@ -238,11 +265,26 @@ public class InfusedPropertiesHelper
 	public static ItemStack clearAllInfusions(ItemStack stack)
 	{
 		stack.remove(INFUSED_PROPERTIES);
+		stack.remove(PROPERTY_DATA);
 		return stack;
 	}
 
 	public static List<Holder<Property>> getInfusedProperties(ItemStack stack) {
+		if(!INFUSED_PROPERTIES.isBound())
+			return InfusedPropertiesComponent.EMPTY.properties();
 		return stack.getOrDefault(INFUSED_PROPERTIES, InfusedPropertiesComponent.EMPTY).properties();
+	}
+
+	public static List<Holder<Property>> getInnateProperties(ItemStack stack) {
+		if(!INNATE_PROPERTIES.isBound())
+			return InfusedPropertiesComponent.EMPTY.properties();
+		return stack.getOrDefault(INNATE_PROPERTIES, InfusedPropertiesComponent.EMPTY).properties();
+	}
+
+	public static List<Holder<Property>> getStoredProperties(ItemStack stack) {
+		if(!STORED_PROPERTIES.isBound())
+			return InfusedPropertiesComponent.EMPTY.properties();
+		return stack.getOrDefault(STORED_PROPERTIES, InfusedPropertiesComponent.EMPTY).properties();
 	}
 
 	public static ItemStack storeProperties(ItemStack stack, List<Holder<Property>> properties)

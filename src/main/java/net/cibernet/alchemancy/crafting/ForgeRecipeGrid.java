@@ -25,11 +25,11 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
 import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ForgeRecipeGrid implements RecipeInput
 {
 	private final ArrayList<ItemStackHolderBlockEntity> items = new ArrayList<>();
-	private final ArrayList<EssenceContainer> essences = new ArrayList<>();
 
 	private final ArrayList<Object> slotOrder = new ArrayList<>();
 
@@ -44,7 +44,9 @@ public class ForgeRecipeGrid implements RecipeInput
 
 	public static ItemStack resolveInteractions(ItemStack input, Level level)
 	{
-		ForgeRecipeGrid grid = new ForgeRecipeGrid(input);
+		ItemStack gridInput = input.copy();
+		gridInput.setCount(1);
+		ForgeRecipeGrid grid = new ForgeRecipeGrid(gridInput);
 
 		for(int i = 0; i < 128; i++)
 		{
@@ -53,7 +55,12 @@ public class ForgeRecipeGrid implements RecipeInput
 				grid.processRecipe(recipe.get().value(), level.registryAccess());
 			else break;
 		}
-		return grid.getCurrentOutput();
+
+		ItemStack result = grid.getCurrentOutput();
+		if(!result.isEmpty())
+			result.setCount(result.getCount() * input.getCount());
+
+		return InfusedPropertiesHelper.truncateProperties(result);
 	}
 
 	private static RecipeManager.CachedCheck<ForgeRecipeGrid, AbstractForgeRecipe<?>> OUT_OF_FORGE_INTERACTIONS_CHECK = (input, level) -> level.getRecipeManager().getRecipesFor(AlchemancyRecipeTypes.ALCHEMANCY_FORGE.get(), input, level).stream().filter(recipe -> recipe.value().matches(input, level) && !recipe.value().isTransmutation())
@@ -71,7 +78,7 @@ public class ForgeRecipeGrid implements RecipeInput
 					new Pair<>(-1, 0), new Pair<>(-1, -1), new Pair<>(0, -1), new Pair<>(1, -1)
 			};
 
-	private ForgeRecipeGrid(ItemStack stack)
+	public ForgeRecipeGrid(ItemStack stack)
 	{
 		forge = new ItemStackHolderBlockEntity(BlockPos.ZERO, AlchemancyBlocks.ALCHEMANCY_FORGE.get().defaultBlockState());
 		forge.setItem(stack);
@@ -97,19 +104,13 @@ public class ForgeRecipeGrid implements RecipeInput
 				items.add(pedestal);
 				slotOrder.add(pedestal);
 			}
-			else if(lookupState.is(AlchemancyBlocks.ESSENCE_INJECTOR) && lookupBlockEntity instanceof IEssenceHolder essenceHolder)
-			{
-				EssenceContainer container = essenceHolder.getEssenceContainer();
-				essences.add(container);
-				slotOrder.add(container);
-			}
 		}
 	}
 
 
 	@Override
 	public int size() {
-		return items.size() + essences.size() + (forge.getItem().isEmpty() ? 0 : 1);
+		return items.size() + (forge.getItem().isEmpty() ? 0 : 1);
 	}
 
 	@Override
@@ -120,9 +121,6 @@ public class ForgeRecipeGrid implements RecipeInput
 
 	public boolean areIngredientsEmpty()
 	{
-		for (EssenceContainer essence : essences)
-			if(!essence.isEmpty())
-				return false;
 		for (ItemStackHolderBlockEntity pedestal : items) {
 			if(!pedestal.isEmpty())
 				return false;
@@ -156,58 +154,15 @@ public class ForgeRecipeGrid implements RecipeInput
 		return -1;
 	}
 
-	public int getSlotFor(EssenceContainer essenceContainer)
-	{
-		EssenceContainer testEssence = new EssenceContainer(essenceContainer.getEssence(), essenceContainer.getAmount(), 0);
-
-		for (EssenceContainer essence : essences) {
-			if (essence.transferTo(testEssence, testEssence.getLimit(), false, false) > 0) {
-
-			}
-		}
-
-		return -1;
-	}
-
 	private HashMap<AbstractForgeRecipe<?>, Integer> CACHED_COMPARE_VALUES = new HashMap<>();
 
-	public int getRecipeCompareValue(AbstractForgeRecipe<?> recipe, List<Ingredient> infusables, List<EssenceContainer> essencesToTest, int priority)
+	public int getRecipeCompareValue(AbstractForgeRecipe<?> recipe, List<Ingredient> infusables, List<Holder<Property>> properties, int priority)
 	{
-		if(CACHED_COMPARE_VALUES.containsKey(recipe))
-			return CACHED_COMPARE_VALUES.get(recipe);
+//		if(CACHED_COMPARE_VALUES.containsKey(recipe))
+//			return CACHED_COMPARE_VALUES.get(recipe);
 
 		int slots = 0;
 		int slotValue = 0;
-
-		//
-		if(!essencesToTest.isEmpty()) {
-			ArrayList<EssenceContainer> essences = new ArrayList<>(this.essences);
-
-			for (EssenceContainer e : essencesToTest) {
-				EssenceContainer testEssence = new EssenceContainer(e.getEssence(), e.getAmount(), 0);
-
-				ArrayList<EssenceContainer> ignoredEssences = new ArrayList<>();
-
-				for (EssenceContainer essence : essences)
-				{
-					if(ignoredEssences.contains(essence))
-						continue;
-
-					if (essence.transferTo(testEssence, testEssence.getLimit(), false, false) > 0)
-					{
-						slots++;
-						slotValue += getSlot(essence);
-
-						if (essence.isEmpty())
-							ignoredEssences.add(essence);
-
-						if (testEssence.isFull())
-							break;
-					}
-				}
-
-			}
-		}
 
 		//
 		if(!infusables.isEmpty())
@@ -231,8 +186,22 @@ public class ForgeRecipeGrid implements RecipeInput
 			}
 		}
 
+		//
 
-		int result = ((priority - AbstractForgeRecipe.MIN_PRIORITY) << 9) + ((8-slots) << 6) + Mth.clamp(slotValue, 0, 36);
+		int infusionValue = 0;
+		if(!properties.isEmpty())
+		{
+			var infusions = InfusedPropertiesHelper.getInfusedProperties(getCurrentOutput()).stream().sorted(Comparator.comparingInt(p -> p.value().getPriority())).toList();
+
+			for (int i = 0; i < infusions.size(); i++) {
+				var infusion = infusions.get(i);
+
+				infusionValue += ((properties.contains(infusion)) ? 0 : i + 1);
+			}
+		}
+
+
+		int result = ((priority - AbstractForgeRecipe.MIN_PRIORITY) << 9) + ((8-slots) << 6) + Mth.clamp(slotValue, 0, 36) + infusionValue;
 
 		//System.out.println(recipe + " slotValue: " + slotValue + " slots: " + slots + " priority: " + priority + " result: " + result);
 
@@ -243,11 +212,6 @@ public class ForgeRecipeGrid implements RecipeInput
 	public ArrayList<ItemStackHolderBlockEntity> getItemPedestals()
 	{
 		return items;
-	}
-
-	public ArrayList<EssenceContainer> getEssenceContainers()
-	{
-		return essences;
 	}
 
 	public boolean consumeItem(ItemStackHolderBlockEntity pedestal)
@@ -261,11 +225,16 @@ public class ForgeRecipeGrid implements RecipeInput
 			applyGlint = Optional.of(false);
 
 		pedestal.removeItem(1);
-		slotOrder.remove(pedestal);
+		markAsProcessed(pedestal);
 
 		cachedDormantProperties = null;
 
 		return true;
+	}
+
+	public void markAsProcessed(ItemStackHolderBlockEntity pedestal) {
+		slotOrder.remove(pedestal);
+		items.remove(pedestal);
 	}
 
 	public boolean testInfusables(List<Ingredient> infusables, boolean consume)
@@ -290,41 +259,6 @@ public class ForgeRecipeGrid implements RecipeInput
 				i++;
 			}
 			if(i >= items.size())
-				return false;
-			else items.remove(i);
-		}
-
-		return true;
-	}
-
-	public boolean testEssences(List<EssenceContainer> essencesToTest, boolean consume)
-	{
-		if(essencesToTest.isEmpty())
-			return true;
-
-		ArrayList<EssenceContainer> essences = new ArrayList<>(this.essences);
-
-		for (EssenceContainer e : essencesToTest)
-		{
-			EssenceContainer testEssence = new EssenceContainer(e.getEssence(), e.getAmount(), 0);
-
-			boolean successful = false;
-			for (EssenceContainer essence : essences)
-			{
-				if(essence.transferTo(testEssence, testEssence.getLimit(), false, consume) > 0)
-				{
-					if(essence.isEmpty())
-						this.essences.remove(essence);
-
-					if(testEssence.isFull())
-					{
-						successful = true;
-						break;
-					}
-				}
-			}
-
-			if(!successful)
 				return false;
 		}
 
@@ -394,9 +328,10 @@ public class ForgeRecipeGrid implements RecipeInput
 				continue;
 
 			boolean perform = false;
+			AtomicBoolean consumeItem = new AtomicBoolean(true);
 			for (Holder<Property> property : List.copyOf(properties))
 			{
-				if(property.value().onInfusedByDormantProperty(target, stack, this, properties))
+				if(InfusedPropertiesHelper.canInfuseWithProperty(currentOutput, property) && property.value().onInfusedByDormantProperty(target, stack, this, properties, consumeItem))
 					perform = true;
 			}
 
@@ -404,9 +339,13 @@ public class ForgeRecipeGrid implements RecipeInput
 			{
 				if(consume)
 				{
+					properties.removeIf(propertyHolder -> !InfusedPropertiesHelper.canInfuseWithProperty(currentOutput, propertyHolder));
 					InfusedPropertiesHelper.addProperties(target, properties);
-					items.remove(pedestal);
-					consumeItem(pedestal);
+					if(consumeItem.get())
+					{
+						items.remove(pedestal);
+						consumeItem(pedestal);
+					}
 				}
 
 				success = true;
@@ -447,7 +386,7 @@ public class ForgeRecipeGrid implements RecipeInput
 
 			boolean perform = false;
 			for (Holder<Property> property : properties) {
-				if(property.value().onInfusedByDormantProperty(target, stack, this, properties))
+				if(property.value().onInfusedByDormantProperty(target, stack, this, properties, new AtomicBoolean(false)))
 					perform = true;
 			}
 

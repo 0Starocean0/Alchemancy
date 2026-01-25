@@ -7,6 +7,7 @@ import net.cibernet.alchemancy.advancements.predicates.ForgeRecipePredicate;
 import net.cibernet.alchemancy.blocks.blockentities.ItemStackHolderBlockEntity;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesHelper;
 import net.cibernet.alchemancy.properties.Property;
+import net.cibernet.alchemancy.properties.TintedProperty;
 import net.cibernet.alchemancy.registries.AlchemancyProperties;
 import net.cibernet.alchemancy.registries.AlchemancyRecipeTypes;
 import net.minecraft.core.Holder;
@@ -42,7 +43,7 @@ public class ForgeCustomNameRecipe extends AbstractForgeRecipe<Object>
 
 	protected ForgeCustomNameRecipe(Ingredient ingredient, Optional<Holder<Property>> bold, Optional<Holder<Property>> italic, Optional<Holder<Property>> strikethrough, Optional<Holder<Property>> underlined, Optional<Holder<Property>> obfuscated, Optional<Boolean> canTint)
 	{
-		super(Optional.empty(), Optional.empty(), List.of(), List.of(), List.of());
+		super(Optional.empty(), Optional.empty(), List.of(), List.of());
 		this.ingredient = ingredient;
 		this.bold = bold;
 		this.italic = italic;
@@ -80,7 +81,10 @@ public class ForgeCustomNameRecipe extends AbstractForgeRecipe<Object>
 						obfuscated.ifPresent(propertyHolder -> result.set(result.get().withObfuscated(InfusedPropertiesHelper.hasProperty(pedestalStack, propertyHolder))));
 
 						if(canTint && InfusedPropertiesHelper.hasInfusedProperty(pedestalStack, AlchemancyProperties.TINTED))
-							result.set(result.get().withColor(AlchemancyProperties.TINTED.get().getData(pedestalStack)));
+						{
+							Integer[] colors = AlchemancyProperties.TINTED.get().getData(pedestalStack);
+							result.set(result.get().withColor(colors.length > 0 ? colors[0] : TintedProperty.DEFAULT_COLOR));
+						}
 
 						return result.get();
 					});

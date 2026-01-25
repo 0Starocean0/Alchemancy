@@ -27,7 +27,7 @@ public class AlchemancyCreativeTabs
 	public static final DeferredHolder<CreativeModeTab, CreativeModeTab> GENERAL = REGISTRY.register("alchemancy", () -> CreativeModeTab.builder()
 			.title(Component.translatable("itemGroup.alchemancy"))
 			.withTabsBefore(CreativeModeTabs.COMBAT)
-			.icon(() -> BLAZEBLOOM.get().getDefaultInstance())
+			.icon(() -> BLAZEBLOOM.toStack())
 			.displayItems((parameters, output) -> {
 				output.accept(BLAZEBLOOM.get());
 				output.accept(ALCHEMICAL_EXTRACT.get());
@@ -53,13 +53,18 @@ public class AlchemancyCreativeTabs
 				output.accept(DREAMSTEEL_PICKAXE.get());
 				output.accept(DREAMSTEEL_AXE.get());
 				output.accept(DREAMSTEEL_HOE.get());
+				output.accept(DREAMSTEEL_BOW.get());
+				output.accept(INFUSION_FLASK.get());
 
 				output.accept(BLANK_PEARL.get());
 				output.accept(REVEALING_PEARL.get());
 				output.accept(PARADOX_PEARL.get());
+				output.accept(VOID_PEARL.get());
+				output.accept(ENTANGLED_SINGULARITY.get());
 
 				output.accept(MICROSCOPIC_LENS.get());
 				output.accept(MACROSCOPIC_LENS.get());
+				output.accept(CHROMA_LENS.get());
 
 				output.accept(GLOWING_ORB.get());
 
@@ -68,19 +73,57 @@ public class AlchemancyCreativeTabs
 				output.accept(PHASING_RING.get());
 				output.accept(UNDYING_RING.get());
 				output.accept(FRIENDSHIP_RING.get());
+				output.accept(ATTRACTION_RING.get());
+				output.accept(VOIDLESS_RING.get());
+				output.accept(SPARKLING_BAND.get());
 
 				output.accept(PROPERTY_VISOR.get());
+				output.accept(TINTED_GLASSES.get());
 
+				output.accept(NIMBUS_BELT.get());
+				output.accept(CRYSTAL_STORM_BELT.get());
+				output.accept(SHIFTING_LIGHTNING_BELT.get());
+
+				output.accept(FLAMEWAKERS.get());
+				output.accept(TIDEWALKER_TREADS.get());
+				output.accept(HARDLIGHT_STEPS.get());
+				output.accept(MECHANICAL_BOOTS.get());
+
+				output.accept(LEADEN_APPLE.get());
+				output.accept(LEADEN_CLOTH.get());
+				output.accept(DIVINE_CLOTH.get());
 				output.accept(WAYWARD_MEDALLION.get());
+				output.accept(VAULT_LOCKPICK.get());
+				output.accept(BINDING_KEY.get());
+				output.accept(SPINNER_SPANNER.get());
+				output.accept(QUANTUM_SPANNER.get());
+
+				output.accept(PHANTOM_MEMBRANE_BLOCK.get());
+				output.accept(GUST_BASKET.get());
+				output.accept(FLAT_HOPPER.get());
+				output.accept(CHROMACHINE.get());
 
 				output.accept(ROCKET_POWERED_HAMMER.get());
+				output.accept(TELEKINETIC_GLOVE.get());
+				output.accept(HOME_RUN_BAT.get());
+				output.accept(FERAL_BLADE.get());
+				output.accept(HOT_ROD.get());
+				output.accept(MOLTEN_CORE_PERFORATOR.get());
 
+				output.accept(BLACK_HOLE_PICKAXE.get());
+				output.accept(BLACK_HOLE_AXE.get());
+				output.accept(BLACK_HOLE_SHOVEL.get());
+				output.accept(BLACK_HOLE_HOE.get());
+
+				output.accept(POCKET_BLACK_HOLE.get());
+
+				output.accept(INFUSION_CODEX.get());
 			}).build());
 
 	public static final DeferredHolder<CreativeModeTab, CreativeModeTab> PROPERTIES = REGISTRY.register("alchemancy_properties", () -> CreativeModeTab.builder()
 			.title(Component.translatable("itemGroup.alchemancy_properties"))
 			.withTabsBefore(GENERAL.getKey())
-			.icon(() -> PROPERTY_CAPSULE.get().getDefaultInstance())
+			.icon(() -> PROPERTY_CAPSULE.toStack())
 			.displayItems((parameters, output) -> {
 
 				for (DeferredHolder<Property, ? extends Property> entry : AlchemancyProperties.REGISTRY.getEntries().stream().sorted(Comparator.comparing(DeferredHolder::getKey)).toList()) {
@@ -92,35 +135,45 @@ public class AlchemancyCreativeTabs
 	@SubscribeEvent
 	public static void addCreative(BuildCreativeModeTabContentsEvent event)
 	{
+		if(event.getTabKey().equals(CreativeModeTabs.FOOD_AND_DRINKS))
+		{
+			event.insertAfter(Items.ENCHANTED_GOLDEN_APPLE.getDefaultInstance(), LEADEN_APPLE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+		}
 		if(event.getTabKey().equals(CreativeModeTabs.COMBAT))
 		{
-			event.insertAfter(Items.GOLDEN_SWORD.getDefaultInstance(), LEAD_SWORD.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(Items.NETHERITE_SWORD.getDefaultInstance(), DREAMSTEEL_SWORD.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.GOLDEN_SWORD.getDefaultInstance(), LEAD_SWORD.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.NETHERITE_SWORD.getDefaultInstance(), DREAMSTEEL_SWORD.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(DREAMSTEEL_SWORD.toStack(), FERAL_BLADE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(FERAL_BLADE.toStack(), HOT_ROD.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 
-			event.insertAfter(Items.MACE.getDefaultInstance(), ROCKET_POWERED_HAMMER.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.BOW.getDefaultInstance(), DREAMSTEEL_BOW.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 
-			event.insertAfter(Items.GOLDEN_BOOTS.getDefaultInstance(), LEAD_HELMET.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_HELMET.get().getDefaultInstance(), LEAD_CHESTPLATE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_CHESTPLATE.get().getDefaultInstance(), LEAD_LEGGINGS.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_LEGGINGS.get().getDefaultInstance(), LEAD_BOOTS.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.MACE.getDefaultInstance(), ROCKET_POWERED_HAMMER.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(ROCKET_POWERED_HAMMER.toStack(), HOME_RUN_BAT.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+
+			event.insertAfter(Items.GOLDEN_BOOTS.getDefaultInstance(), LEAD_HELMET.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_HELMET.toStack(), LEAD_CHESTPLATE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_CHESTPLATE.toStack(), LEAD_LEGGINGS.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_LEGGINGS.toStack(), LEAD_BOOTS.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 		}
 		else if(event.getTabKey().equals(CreativeModeTabs.TOOLS_AND_UTILITIES))
 		{
-			event.insertAfter(Items.GOLDEN_HOE.getDefaultInstance(), LEAD_SHOVEL.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_SHOVEL.get().getDefaultInstance(), LEAD_PICKAXE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_PICKAXE.get().getDefaultInstance(), LEAD_AXE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(LEAD_AXE.get().getDefaultInstance(), LEAD_HOE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.GOLDEN_HOE.getDefaultInstance(), LEAD_SHOVEL.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_SHOVEL.toStack(), LEAD_PICKAXE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_PICKAXE.toStack(), LEAD_AXE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(LEAD_AXE.toStack(), LEAD_HOE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 
-			event.insertAfter(Items.NETHERITE_HOE.getDefaultInstance(), DREAMSTEEL_SHOVEL.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(DREAMSTEEL_SHOVEL.get().getDefaultInstance(), DREAMSTEEL_PICKAXE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(DREAMSTEEL_PICKAXE.get().getDefaultInstance(), DREAMSTEEL_AXE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(DREAMSTEEL_AXE.get().getDefaultInstance(), DREAMSTEEL_HOE.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.NETHERITE_HOE.getDefaultInstance(), DREAMSTEEL_SHOVEL.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(DREAMSTEEL_SHOVEL.toStack(), DREAMSTEEL_PICKAXE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(DREAMSTEEL_PICKAXE.toStack(), DREAMSTEEL_AXE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(DREAMSTEEL_AXE.toStack(), DREAMSTEEL_HOE.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(DREAMSTEEL_HOE.toStack(), MOLTEN_CORE_PERFORATOR.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 		}
 		else if(event.getTabKey().equals(CreativeModeTabs.INGREDIENTS))
 		{
-			event.insertAfter(Items.GOLD_INGOT.getDefaultInstance(), LEAD_INGOT.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(Items.NETHERITE_INGOT.getDefaultInstance(), DREAMSTEEL_INGOT.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
-			event.insertAfter(Items.GOLD_NUGGET.getDefaultInstance(), DREAMSTEEL_NUGGET.get().getDefaultInstance(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.GOLD_INGOT.getDefaultInstance(), LEAD_INGOT.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.NETHERITE_INGOT.getDefaultInstance(), DREAMSTEEL_INGOT.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
+			event.insertAfter(Items.GOLD_NUGGET.getDefaultInstance(), DREAMSTEEL_NUGGET.toStack(), CreativeModeTab.TabVisibility.PARENT_AND_SEARCH_TABS);
 		}
 	}
 }

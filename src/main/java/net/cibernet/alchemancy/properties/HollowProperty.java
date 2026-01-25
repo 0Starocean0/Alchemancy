@@ -106,7 +106,7 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 	@Override
 	public void onStackedOverItem(ItemStack hollowItem, ItemStack carriedItem, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled)
 	{
-		if(clickAction != ClickAction.SECONDARY)
+		if(isCancelled.get() || clickAction != ClickAction.SECONDARY)
 			return;
 
 		ItemStack storedStack = getData(hollowItem);
@@ -142,7 +142,7 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 	@Override
 	public void onStackedOverMe(ItemStack carriedItem, ItemStack stackedOnItem, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled)
 	{
-		if(clickAction != ClickAction.SECONDARY)
+		if(isCancelled.get() || clickAction != ClickAction.SECONDARY)
 			return;
 
 		ItemStack storedStack = getData(stackedOnItem);
@@ -272,7 +272,11 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 				{
 					ItemStack stackToDrop = storedStack.copy();
 					stackToDrop.setCount(1);
-					event.getEntity().drop(stackToDrop, true);
+					var item = event.getEntity().drop(stackToDrop, true);
+
+					if(item != null)
+						item.setDefaultPickUpDelay();
+
 					storedStack.shrink(1);
 					setData(stack, storedStack);
 					playDropContentsSound(event.getEntity());
@@ -293,7 +297,11 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 			return false;
 
 		if(user instanceof Player player)
-			player.drop(toDrop, true);
+		{
+			var item = player.drop(toDrop, true);
+			if(item != null)
+				item.setDefaultPickUpDelay();
+		}
 		else if(nonPlayerDrop(user, toDrop, false, true) == null)
 			return false;
 		setData(hollowItem, ItemStack.EMPTY);
@@ -318,7 +326,7 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 
 			double d0 = user.getEyeY() - 0.3F;
 			ItemEntity itementity = new ItemEntity(user.level(), user.getX(), d0, user.getZ(), droppedItem);
-			itementity.setPickUpDelay(40);
+			itementity.setDefaultPickUpDelay();
 			if (includeThrowerName) {
 				itementity.setThrower(user);
 			}
@@ -389,6 +397,18 @@ public class HollowProperty extends Property implements IDataHolder<ItemStack>
 			if(!data.isEmpty())
 				put("item", data.save(CommonUtils.registryAccessStatic()));
 		}};
+	}
+
+	@Override
+	public ItemStack combineData(@Nullable ItemStack currentData, ItemStack newData) {
+
+		if(currentData == null || currentData.isEmpty())
+			return newData;
+
+		if(ItemStack.matches(currentData, newData))
+			currentData.setCount(Math.min(currentData.getMaxStackSize(), currentData.getCount() + newData.getCount()));
+
+		return currentData;
 	}
 
 	@Override

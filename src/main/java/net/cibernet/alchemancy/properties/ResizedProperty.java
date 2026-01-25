@@ -18,11 +18,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.event.ItemAttributeModifierEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
-import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class ResizedProperty extends Property implements IDataHolder<Float>
 {
@@ -45,7 +46,7 @@ public class ResizedProperty extends Property implements IDataHolder<Float>
 	}
 
 	@Override
-	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd)
+	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd, AtomicBoolean consumeItem)
 	{
 		float currentSize = getData(stack);
 		float newSize;
@@ -77,6 +78,11 @@ public class ResizedProperty extends Property implements IDataHolder<Float>
 	public CompoundTag writeData(Float data)
 	{
 		return new CompoundTag(){{putFloat("size", data);}};
+	}
+
+	@Override
+	public Float combineData(@Nullable Float currentData, Float newData) {
+		return currentData == null ? newData : Math.clamp(currentData + newData, MIN, MAX);
 	}
 
 	@Override

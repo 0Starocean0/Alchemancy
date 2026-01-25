@@ -1,6 +1,9 @@
 {
   "replace": false,
   "values": [
-    "minecraft:painting"
+    "#minecraft:wool_carpets",
+
+    "minecraft:painting",
+    "alchemancy:flat_hopper"
   ]
 }

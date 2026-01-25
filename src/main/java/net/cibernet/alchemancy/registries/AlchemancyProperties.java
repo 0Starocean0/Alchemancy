@@ -4,8 +4,11 @@ import com.mojang.serialization.Codec;
 import net.cibernet.alchemancy.Alchemancy;
 import net.cibernet.alchemancy.properties.*;
 import net.cibernet.alchemancy.properties.data.modifiers.PropertyModifierType;
+import net.cibernet.alchemancy.properties.entangled.*;
 import net.cibernet.alchemancy.properties.soulbind.*;
 import net.cibernet.alchemancy.properties.special.*;
+import net.cibernet.alchemancy.properties.voidborn.*;
+import net.cibernet.alchemancy.util.ColorUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.core.Registry;
 import net.minecraft.network.codec.ByteBufCodecs;
@@ -19,14 +22,11 @@ import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.neoforge.common.ItemAbilities;
-import net.neoforged.neoforge.common.Tags;
 import net.neoforged.neoforge.registries.DeferredHolder;
-import net.neoforged.neoforge.registries.DeferredItem;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import org.jetbrains.annotations.Nullable;
 
@@ -58,6 +58,7 @@ public class AlchemancyProperties
 		public static final DeferredHolder<PropertyModifierType<?>, PropertyModifierType<Float>> EFFECT_RADIUS = REGISTRY.register("effect_radius", PropertyModifierType.build(1f, Codec.FLOAT, ByteBufCodecs.FLOAT));
 		public static final DeferredHolder<PropertyModifierType<?>, PropertyModifierType<Float>> EFFECT_VALUE = REGISTRY.register("effect_value", PropertyModifierType.build(1f, Codec.FLOAT, ByteBufCodecs.FLOAT));
 		public static final DeferredHolder<PropertyModifierType<?>, PropertyModifierType<Integer>> BONUS_SLOTS = REGISTRY.register("bonus_slots", PropertyModifierType.build(0, Codec.INT, ByteBufCodecs.INT));
+		public static final DeferredHolder<PropertyModifierType<?>, PropertyModifierType<Float>> ROTATION = REGISTRY.register("rotation", PropertyModifierType.build(1f, Codec.FLOAT, ByteBufCodecs.FLOAT));
 
 		public static Holder<PropertyModifierType<?>> asHolder(PropertyModifierType<?> modifierType)
 		{
@@ -108,6 +109,10 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, HeavyProperty> HEAVY = REGISTRY.register("heavy", HeavyProperty::new);
 	public static final DeferredHolder<Property, AntigravProperty> ANTIGRAV = REGISTRY.register("antigrav", AntigravProperty::new);
 	public static final DeferredHolder<Property, Property> DEXTEROUS = REGISTRY.register("dexterous", () -> Property.simple(0x00EAA8));
+	public static final DeferredHolder<Property, WaterWalkingProperty> WAVE_RIDER = REGISTRY.register("wave_rider", WaterWalkingProperty::new);
+	public static final DeferredHolder<Property, AirWalkingProperty> AIR_WALKER = REGISTRY.register("air_walker", AirWalkingProperty::new);
+	public static final DeferredHolder<Property, AthleticProperty> ATHLETIC = REGISTRY.register("athletic", AthleticProperty::new);
+	public static final DeferredHolder<Property, AnchoredProperty> ANCHORED = REGISTRY.register("anchored", AnchoredProperty::new);
 
 	//Tools
 	public static final DeferredHolder<Property, ToolProperty> MINING = REGISTRY.register("mining", () -> new ToolProperty(0x888788, BlockTags.MINEABLE_WITH_PICKAXE, ItemAbilities.DEFAULT_PICKAXE_ACTIONS));
@@ -127,9 +132,12 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, GliderProperty> GLIDER = REGISTRY.register("glider", GliderProperty::new);
 
 	public static final DeferredHolder<Property, CraftyProperty> CRAFTY = REGISTRY.register("crafty", CraftyProperty::new);
+	public static final DeferredHolder<Property, StonecuttingProperty> STONECUTTING = REGISTRY.register("stonecutting", StonecuttingProperty::new);
 	public static final DeferredHolder<Property, AutosmeltProperty> SMELTING = REGISTRY.register("smelting", AutosmeltProperty::new);
-	public static final DeferredHolder<Property, AssembleProperty> ASSEMBLING = REGISTRY.register("assembling", AssembleProperty::new);
 	public static final DeferredHolder<Property, AssimilatingProperty> ASSIMILATING = REGISTRY.register("assimilating", AssimilatingProperty::new);
+	public static final DeferredHolder<Property, EarlyAssemblingProperty> ASSEMBLING = REGISTRY.register("assembling", EarlyAssemblingProperty::new);
+	public static final DeferredHolder<Property, AssembleProperty> REPLICATING = REGISTRY.register("replicating", AssembleProperty::new);
+	public static final DeferredHolder<Property, FragmentedProperty> FRAGMENTED = REGISTRY.register("fragmented", FragmentedProperty::new);
 
 	//Storage
 	public static final DeferredHolder<Property, HollowProperty> HOLLOW = REGISTRY.register("hollow", HollowProperty::new);
@@ -154,6 +162,7 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, HydrophobicProperty> HYDROPHOBIC = REGISTRY.register("hydrophobic", HydrophobicProperty::new);
 	public static final DeferredHolder<Property, AllergicProperty> ALLERGIC = REGISTRY.register("allergic", AllergicProperty::new);
 	public static final DeferredHolder<Property, ArmorPulseProperty> ARMOR_PULSE = REGISTRY.register("armor_pulse", ArmorPulseProperty::new);
+	public static final DeferredHolder<Property, RunningStartProperty> RUNNING_START = REGISTRY.register("running_start", RunningStartProperty::new);
 
 	//Mob Effects
 	public static final DeferredHolder<Property, LevitatingProperty> LEVITATING = REGISTRY.register("levitating", LevitatingProperty::new);
@@ -167,7 +176,7 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, DivingGearProperty> AQUATIC = REGISTRY.register("aquatic", DivingGearProperty::new);
 	public static final DeferredHolder<Property, LeapingProperty> LEAPING = REGISTRY.register("leaping", LeapingProperty::new);
 	public static final DeferredHolder<Property, GlowingProperty> GLOWING_AURA = REGISTRY.register("glowing_aura", GlowingProperty::new);
-	public static final DeferredHolder<Property, MobEffectEquippedAndHitProperty> OMINOUS = REGISTRY.register("ominous", () -> new MobEffectEquippedAndHitProperty(new MobEffectInstance(MobEffects.BAD_OMEN, 10), EquipmentSlotGroup.ANY, false));
+	public static final DeferredHolder<Property, OminousProperty> OMINOUS = REGISTRY.register("ominous", OminousProperty::new);
 	public static final DeferredHolder<Property, HeartyProperty> HEARTY = REGISTRY.register("hearty", HeartyProperty::new);
 
 	//Offensive
@@ -180,6 +189,8 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, LetsGoGamblingProperty> GAMBLING = REGISTRY.register("gambling", LetsGoGamblingProperty::new);
 	public static final DeferredHolder<Property, ArcaneProperty> ARCANE = REGISTRY.register("arcane", ArcaneProperty::new);
 	public static final DeferredHolder<Property, ResizedProperty> RESIZED = REGISTRY.register("resized", ResizedProperty::new);
+	public static final DeferredHolder<Property, FeralProperty> FERAL = REGISTRY.register("feral", FeralProperty::new);
+	public static final DeferredHolder<Property, CracklingProperty> CRACKLING = REGISTRY.register("crackling", CracklingProperty::new);
 
 	//On Crit
 	public static final DeferredHolder<Property, ExplodingProperty> EXPLODING = REGISTRY.register("exploding", () -> new ExplodingProperty(0xDB2F1A, 3, 5, ExplodingProperty.destroyBlocks()));
@@ -206,6 +217,16 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, RelentlessProperty> RELENTLESS = REGISTRY.register("relentless", RelentlessProperty::new);
 	public static final DeferredHolder<Property, SpiritBondProperty> SPIRIT_BOND = REGISTRY.register("spirit_bond", SpiritBondProperty::new);
 	public static final DeferredHolder<Property, PhasingProperty> PHASING = REGISTRY.register("phasing", PhasingProperty::new);
+	public static final DeferredHolder<Property, HungeringProperty> HUNGERING = REGISTRY.register("hungering", HungeringProperty::new);
+	public static final DeferredHolder<Property, ParasiticProperty> PARASITIC = REGISTRY.register("parasitic", ParasiticProperty::new);
+	public static final DeferredHolder<Property, SoulHarvesterProperty> SOUL_HARVESTER = REGISTRY.register("soul_harvester", SoulHarvesterProperty::new);
+
+	//Voidborn
+	public static final DeferredHolder<Property, VoidbornProperty> VOIDBORN = REGISTRY.register("voidborn", VoidbornProperty::new);
+	public static final DeferredHolder<Property, BigSuckProperty> CEASELESS_VOID = REGISTRY.register("ceaseless_void", BigSuckProperty::new);
+	public static final DeferredHolder<Property, VoidtouchProperty> VOIDTOUCH = REGISTRY.register("voidtouch", VoidtouchProperty::new);
+	public static final DeferredHolder<Property, TelekineticProperty> KINETIC_GRAB = REGISTRY.register("kinetic_grab", TelekineticProperty::new);
+	public static final DeferredHolder<Property, EntityPullProperty<Entity>> VACUUMING = REGISTRY.register("vacuuming", () -> new EntityPullProperty<>(0x4722AD, Entity.class, 8, true, 0.25f));
 
 	//Misc
 	public static final DeferredHolder<Property, NonlethalProperty> NONLETHAL = REGISTRY.register("nonlethal", NonlethalProperty::new);
@@ -234,11 +255,14 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, ExtendedProperty> EXTENDED = REGISTRY.register("extended", ExtendedProperty::new);
 	public static final DeferredHolder<Property, CalciumProperty> CALCAREOUS = REGISTRY.register("calcareous", CalciumProperty::new);
 	public static final DeferredHolder<Property, MusicalProperty> MUSICAL = REGISTRY.register("musical", MusicalProperty::new);
-	public static final DeferredHolder<Property, EntityPullProperty<Projectile>> TARGETED = REGISTRY.register("targeted", () -> new EntityPullProperty<>(0xDC4A4A, Projectile.class, 12, false));
+	public static final DeferredHolder<Property, EntityPullProperty<Projectile>> TARGETED = REGISTRY.register("targeted", () -> new EntityPullProperty<>(0xDC4A4A, Projectile.class, 16, false, 1));
 	public static final DeferredHolder<Property, RepelledProperty<Entity>> REPELLED = REGISTRY.register("repelled", () -> new RepelledProperty<>(0x4ADCDC, Entity.class, 8, false));
 	public static final DeferredHolder<Property, HomingProperty<LivingEntity>> LIGHT_SEEKING = REGISTRY.register("light_seeking", () -> new HomingProperty<>(0xFFFF00, LivingEntity.class, 24, 1f, HomingProperty.EffectType.PROJECTILE_ONLY, (e) -> e.isOnFire() || e.isCurrentlyGlowing()));
 	public static final DeferredHolder<Property, Property> FLIMSY = REGISTRY.register("flimsy", () -> Property.simple(0xC0C49D));
 	public static final DeferredHolder<Property, CompactProperty> COMPACT = REGISTRY.register("compact", CompactProperty::new);
+	public static final DeferredHolder<Property, MagneticProperty> MAGNETIC = REGISTRY.register("magnetic", MagneticProperty::new);
+	public static final DeferredHolder<Property, KineticRechargeProperty> KINETIC_RECHARGE = REGISTRY.register("kinetic_recharge", KineticRechargeProperty::new);
+	public static final DeferredHolder<Property, LazyProperty> LAZY = REGISTRY.register("lazy", LazyProperty::new);
 
 	//Cosmetic
 	public static final DeferredHolder<Property, Property> REVEALED = REGISTRY.register("revealed", () -> Property.simple(0xD6DDFF));
@@ -249,12 +273,19 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, SeethroughProperty> SEETHROUGH = REGISTRY.register("seethrough", SeethroughProperty::new);
 	public static final DeferredHolder<Property, TintedProperty> TINTED = REGISTRY.register("tinted", TintedProperty::new);
 	public static final DeferredHolder<Property, FlattenedProperty> FLATTENED = REGISTRY.register("flattened", FlattenedProperty::new);
-
+	public static final DeferredHolder<Property, SparklingProperty> SPARKLING = REGISTRY.register("sparkling", SparklingProperty::new);
 
 	//Special
 	public static final DeferredHolder<Property, Property> AWAKENED = REGISTRY.register("awakened", () -> Property.simpleInterpolated(false, 0.5f, 0xFF91EAE3, 0xFF91EAE3, 0xFFEDF2F8, 0xFFEBBBDB, 0xFFEBBBDB, 0xFFEDF2F8));
 	public static final DeferredHolder<Property, Property> PARADOXICAL = REGISTRY.register("paradoxical", () -> Property.simpleInterpolated(true, 0.2f, 0xFFFF0000, 0xFFFFFF00, 0xFF00FF00, 0xFF0000FF, 0xFFA100FF));
 	public static final DeferredHolder<Property, Property> LIMIT_BREAK = REGISTRY.register("limit_break", () -> IncreaseInfuseSlotsProperty.simple(1, (style) -> style.withBold(true), IncreaseInfuseSlotsProperty::limitBreakColors, IncreaseInfuseSlotsProperty::limitBreakCreativeTab));
+
+	public static final DeferredHolder<Property, ActivationEntangledProperty> ENTANGLED = REGISTRY.register("entangled", ActivationEntangledProperty::new);
+	public static final DeferredHolder<Property, InteractEntangledProperty> USE_ENTANGLED = REGISTRY.register("use_entangled", InteractEntangledProperty::new);
+	public static final DeferredHolder<Property, CrouchEntangledProperty> CROUCH_ENTANGLED = REGISTRY.register("crouch_entangled", CrouchEntangledProperty::new);
+	public static final DeferredHolder<Property, JumpEntangledProperty> JUMP_ENTANGLED = REGISTRY.register("jump_entangled", JumpEntangledProperty::new);
+	public static final DeferredHolder<Property, SprintEntangledProperty> SPRINT_ENTANGLED = REGISTRY.register("sprint_entangled", SprintEntangledProperty::new);
+	public static final DeferredHolder<Property, QuantumShiftProperty> QUANTUM_SHIFT = REGISTRY.register("quantum_shift", QuantumShiftProperty::new);
 
 	public static final DeferredHolder<Property, Property> DIRTY = REGISTRY.register("dirty", () -> Property.simple(0x96592E));
 	public static final DeferredHolder<Property, Property> AWKWARD = REGISTRY.register("awkward", () -> Property.simple(0xA5266C));
@@ -262,28 +293,20 @@ public class AlchemancyProperties
 
 	//Stuff to goof around
 	public static final DeferredHolder<Property, RandomEffectProperty> RANDOM = REGISTRY.register("random", RandomEffectProperty::new);
-	public static final DeferredHolder<Property, BlockVacuumProperty> BLOCK_VACUUM = REGISTRY.register("block_vacuum", BlockVacuumProperty::new);
-	public static final DeferredHolder<Property, BigSuckProperty> CEASELESS_VOID = REGISTRY.register("ceaseless_void", BigSuckProperty::new);
-	public static final DeferredHolder<Property, VoidtouchProperty> VOIDTOUCH = REGISTRY.register("voidtouch", VoidtouchProperty::new);
-	public static final DeferredHolder<Property, Property> QUANTUM_BIND = REGISTRY.register("quantum_bind", () -> new Property() {
-		@Override
-		public int getColor(ItemStack stack) {
-			return 0xE8FF00;
-		}
+	public static final DeferredHolder<Property, BlockVacuumProperty> WORLD_OBLITERATOR = REGISTRY.register("world_obliterator", BlockVacuumProperty::new);
+	public static final DeferredHolder<Property, Property> UNMOVABLE = REGISTRY.register("unmovable", UnmovableProperty::new);
+	public static final DeferredHolder<Property, ItemMagnetProperty> ITEM_PULL = REGISTRY.register("item_pull", ItemMagnetProperty::new);
+	public static final DeferredHolder<Property, ChromatizeProperty> CHROMATIZE = REGISTRY.register("chromatize", ChromatizeProperty::new);
+	public static final DeferredHolder<Property, RotatingProperty> ROTATING = REGISTRY.register("rotating", RotatingProperty::new);
 
-		@Override
-		public Collection<ItemStack> populateCreativeTab(DeferredItem<Item> capsuleItem, Holder<Property> holder) {
-			return List.of();
-		}
+	public static final DeferredHolder<Property, BatteryPoweredProperty> BATTERY_POWERED = REGISTRY.register("battery_powered", BatteryPoweredProperty::new);
+	public static final DeferredHolder<Property, LivingBatteryProperty> LIVING_BATTERY = REGISTRY.register("living_battery", LivingBatteryProperty::new);
 
-		@Override
-		public boolean hasJournalEntry() {
-			return false;
-		}
-	});
-	public static final DeferredHolder<Property, ItemMagnetProperty> ITEM_MAGNET = REGISTRY.register("item_magnet", ItemMagnetProperty::new);
+	public static final DeferredHolder<Property, SoundEffectProperty> BADA_QUIP = REGISTRY.register("bada_quip", () -> new SoundEffectProperty(0x7289DA, AlchemancySoundEvents.BADA_QUIP.value(), true));
 
 	//Innate Properties
+	public static final DeferredHolder<Property, InfusionCodexProperty> INFUSION_CODEX = REGISTRY.register("infusion_codex", InfusionCodexProperty::new);
+
 	public static final DeferredHolder<Property, AuxiliaryProperty> AUXILIARY = REGISTRY.register("auxiliary", AuxiliaryProperty::new);
 	public static final DeferredHolder<Property, GlowRingProperty> ETERNAL_GLOW = REGISTRY.register("eternal_glow", GlowRingProperty::new);
 	public static final DeferredHolder<Property, PhaseRingProperty> PHASE_STEP = REGISTRY.register("phase_step", PhaseRingProperty::new);
@@ -291,6 +314,19 @@ public class AlchemancyProperties
 	public static final DeferredHolder<Property, FriendlyProperty> FRIENDLY = REGISTRY.register("friendly", FriendlyProperty::new);
 	public static final DeferredHolder<Property, WaywardWarpProperty> WAYWARD_WARP = REGISTRY.register("wayward_warp", WaywardWarpProperty::new);
 	public static final DeferredHolder<Property, RocketPoweredProperty> ROCKET_POWERED = REGISTRY.register("rocket_powered", RocketPoweredProperty::new);
+	public static final DeferredHolder<Property, BindingProperty> BINDING = REGISTRY.register("binding", BindingProperty::new);
+	public static final DeferredHolder<Property, RemoveInfusionsProperty> INFUSION_CLEANSE = REGISTRY.register("infusion_cleanse", () -> new RemoveInfusionsProperty(() -> 0x566E7F));
+	public static final DeferredHolder<Property, RemoveInfusionsProperty> DIVINE_CLEANSE = REGISTRY.register("divine_cleanse", () -> new RemoveInfusionsProperty(() -> ColorUtils.interpolateColorsOverTime(2f, 0x85ABC4, 0xF6FFAA), AlchemancyTags.Properties.AFFECTED_BY_DIVINE_CLEANSE));
+	public static final DeferredHolder<Property, FlameWakerProperty> FLAME_STEP = REGISTRY.register("flame_step", FlameWakerProperty::new);
+	public static final DeferredHolder<Property, FlameEmperorProperty> FLAME_EMPEROR = REGISTRY.register("flame_emperor", FlameEmperorProperty::new);
+	public static final DeferredHolder<Property, BlinkingProperty> BLINKING = REGISTRY.register("blinking", BlinkingProperty::new);
+	public static final DeferredHolder<Property, DashingProperty> CLOUD_DASH = REGISTRY.register("cloud_dash", () -> new DashingProperty(1.3f,0x54B4FF, 0xFF6254));
+	public static final DeferredHolder<Property, DashingProperty> CRYSTAL_DASH = REGISTRY.register("crystal_dash", () -> new DashingProperty(1.6f,0xD877FF, 0x54B4FF, 0xFF6254));
+	public static final DeferredHolder<Property, HomeRunProperty> HOME_RUN = REGISTRY.register("home_run", HomeRunProperty::new);
+	public static final DeferredHolder<Property, VaultLockpickingProperty> VAULTPICKING = REGISTRY.register("vaultpicking", VaultLockpickingProperty::new);
+	public static final DeferredHolder<Property, GustJetProperty> GUST_JET = REGISTRY.register("gust_jet", GustJetProperty::new);
+	public static final DeferredHolder<Property, Property> TINTED_LENS = REGISTRY.register("tinted_lens", () -> Property.simple(0xFF35357A));
+
 
 	//TODO
 	//Tethered: On Right Click leashes the user to the targeted entity or fence block. - Leash

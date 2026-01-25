@@ -4,6 +4,10 @@
   "values": [
     "minecraft:player",
     "minecraft:ender_dragon",
+    "minecraft:command_block_minecart",
+
+    "minecraft:chest_boat",
+    "minecraft:chest_minecart",
     "#c:capturing_not_supported"
   ]
 }

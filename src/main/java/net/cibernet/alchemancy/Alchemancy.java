@@ -1,6 +1,7 @@
 package net.cibernet.alchemancy;
 
 import com.mojang.logging.LogUtils;
+import net.cibernet.alchemancy.commands.AlchemancyCommands;
 import net.cibernet.alchemancy.registries.*;
 import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.ModContainer;
@@ -32,7 +33,6 @@ public class Alchemancy {
 		AlchemancyItems.Materials.ARMOR_MATERIAL_REGISTRY.register(modEventBus);
 		AlchemancyItems.Components.REGISTRY.register(modEventBus);
 		AlchemancyEntities.REGISTRY.register(modEventBus);
-		AlchemancyEssence.REGISTRY.register(modEventBus);
 		AlchemancyProperties.REGISTRY.register(modEventBus);
 		AlchemancyProperties.Modifiers.REGISTRY.register(modEventBus);
 		AlchemancyCreativeTabs.REGISTRY.register(modEventBus);
@@ -44,6 +44,8 @@ public class Alchemancy {
 		AlchemancyCriteriaTriggers.REGISTRY.register(modEventBus);
 		AlchemancySoundEvents.REGISTRY.register(modEventBus);
 		AlchemancyPoiTypes.REGISTRY.register(modEventBus);
+		AlchemancyDataAttachments.REGISTRY.register(modEventBus);
+		AlchemancyCommands.Arguments.REGISTRY.register(modEventBus);
 
 		// Register our mod's ModConfigSpec so that FML can create and load the config file for us
 		//modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);

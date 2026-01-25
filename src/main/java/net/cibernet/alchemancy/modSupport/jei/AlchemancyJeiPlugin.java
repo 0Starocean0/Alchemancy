@@ -14,7 +14,9 @@ import net.cibernet.alchemancy.properties.Property;
 import net.cibernet.alchemancy.registries.AlchemancyItems;
 import net.cibernet.alchemancy.registries.AlchemancyProperties;
 import net.cibernet.alchemancy.registries.AlchemancyRecipeTypes;
+import net.cibernet.alchemancy.util.CommonUtils;
 import net.minecraft.client.Minecraft;
+import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
@@ -30,6 +32,7 @@ import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @JeiPlugin
 public class AlchemancyJeiPlugin implements IModPlugin
@@ -102,7 +105,7 @@ public class AlchemancyJeiPlugin implements IModPlugin
 		for (RecipeHolder<AbstractForgeRecipe<?>> recipe : forgeRecipes)
 		{
 			if(
-					addTo(transmutationRecipes, ItemTransmutationRecipe.class, recipe) ||
+					(!isSecretTransmutation(recipe) && addTo(transmutationRecipes, ItemTransmutationRecipe.class, recipe)) ||
 					addToExact(propertyWarpRecipes, PropertyWarpRecipe.class, recipe) ||
 					addToExact(forgeItemRecipes, ForgeItemRecipe.class, recipe) ||
 					addToExact(forgePropertyRecipes, ForgePropertyRecipe.class, recipe)
@@ -122,8 +125,14 @@ public class AlchemancyJeiPlugin implements IModPlugin
 			TagKey<Item> tagKey = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(Alchemancy.MODID, "dormant_properties/" + propertyHolder.getKey().location().getPath()));
 			Optional<HolderSet.Named<Item>> tag = BuiltInRegistries.ITEM.getTag(tagKey);
 
-
-			if(tag.isPresent() && tag.get().size() > 0)
+			if(propertyHolder.equals(AlchemancyProperties.VOIDBORN))
+			{
+				List<ItemStack> voidbornItems = new ArrayList<>();
+				voidbornItems.add(InfusedPropertiesHelper.createPropertyIngredient(propertyHolder));
+				tag.ifPresent(holders -> voidbornItems.addAll(holders.stream().filter(Holder::isBound).map(itemHolder -> itemHolder.value().getDefaultInstance()).collect(Collectors.toSet())));
+				registration.addItemStackInfo(voidbornItems, Component.translatable("recipe.alchemancy.voidborn.info"));
+			}
+			else if(tag.isPresent() && tag.get().size() > 0)
 				dormantPropertyCapsules.add(InfusedPropertiesHelper.createPropertyIngredient(propertyHolder));
 		}
 
@@ -138,6 +147,10 @@ public class AlchemancyJeiPlugin implements IModPlugin
 			return true;
 		}
 		return false;
+	}
+
+	private boolean isSecretTransmutation(RecipeHolder<AbstractForgeRecipe<?>> recipe) {
+		return AlchemancyItems.SECRET_TRANSMUTATIONS.stream().anyMatch(itemHolder -> itemHolder.value().equals(recipe.value().getResultItem(CommonUtils.registryAccessStatic()).getItem()));
 	}
 
 	public <T extends AbstractForgeRecipe<?>> boolean addTo(List<T> list, Class<T> clazz, RecipeHolder<AbstractForgeRecipe<?>> holder)

@@ -1,18 +1,21 @@
 package net.cibernet.alchemancy.properties;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.cibernet.alchemancy.crafting.ForgeRecipeGrid;
+import net.cibernet.alchemancy.item.InnatePropertyItem;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesComponent;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesHelper;
 import net.cibernet.alchemancy.mixin.accessors.AbstractCauldronAccessor;
 import net.cibernet.alchemancy.properties.data.IDataHolder;
 import net.cibernet.alchemancy.registries.AlchemancyItems;
+import net.cibernet.alchemancy.registries.AlchemancyProperties;
 import net.cibernet.alchemancy.registries.AlchemancyTags;
+import net.cibernet.alchemancy.util.ColorUtils;
 import net.minecraft.core.Holder;
 import net.minecraft.core.cauldron.CauldronInteraction;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.util.FastColor;
-import net.minecraft.world.InteractionResult;
 import net.minecraft.world.ItemInteractionResult;
 import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.DyeItem;
@@ -21,17 +24,30 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.AbstractCauldronBlock;
 import net.minecraft.world.level.block.LayeredCauldronBlock;
 import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.event.entity.player.PlayerInteractEvent;
 import net.neoforged.neoforge.event.entity.player.UseItemOnBlockEvent;
 import net.neoforged.neoforge.registries.DeferredItem;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.stream.Collectors;
 
-public class TintedProperty extends Property implements IDataHolder<Integer>, ITintModifier
-{
+public class TintedProperty extends Property implements IDataHolder<Integer[]>, ITintModifier {
 	public static final int DEFAULT_COLOR = FastColor.ARGB32.opaque(0xFFFFFF);
+	public static final Integer DEFAULT_COLORS[] = new Integer[0];
+
+	private static final Int2ObjectOpenHashMap<DyeColor> TINT_TO_DYE_MAP = new Int2ObjectOpenHashMap<>(
+			Arrays.stream(DyeColor.values()).collect(Collectors.toMap(DyeColor::getTextureDiffuseColor, dye -> dye))
+	);
+
+	private static Component getColorName(int color) {
+		DyeColor dyecolor = TINT_TO_DYE_MAP.get(color);
+		return dyecolor == null ? Component.translatable("property.detail.color", ColorUtils.colorToHexString(color)).withColor(color) :
+				Component.translatable("color.minecraft." + dyecolor.getName()).withColor(color);
+	}
 
 	@Override
 	public boolean cluelessCanReset() {
@@ -39,39 +55,37 @@ public class TintedProperty extends Property implements IDataHolder<Integer>, IT
 	}
 
 	@Override
-	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd)
-	{
-		int base = getData(stack);
-		int color = getDyeColor(propertySource);
+	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd, AtomicBoolean consumeItem) {
 
+		if(stack.is(AlchemancyTags.Items.CANNOT_TINT)) return false;
 
+		Integer[] base = getData(stack);
+		Integer[] colors = getDyeColor(propertySource);
 
-		if(color == -1)
-			return super.onInfusedByDormantProperty(stack, propertySource, grid, propertiesToAdd);
+		if (colors.length == 0)
+			return false;
 
-		setData(stack, base == getDefaultData() ? FastColor.ARGB32.color(255, color) :  mixColors(base, List.of(color)));
+		setData(stack, mixColors(base, colors));
 		return true;
 	}
 
-	public int getDyeColor(ItemStack stack)
-	{
-		if(stack.getItem() instanceof DyeItem dyeItem)
-			return dyeItem.getDyeColor().getTextureDiffuseColor();
-		else if(!getData(stack).equals(getDefaultData()))
+
+	public Integer[] getDyeColor(ItemStack stack) {
+		if (stack.getItem() instanceof DyeItem dyeItem)
+			return new Integer[]{FastColor.ARGB32.color(255, dyeItem.getDyeColor().getTextureDiffuseColor())};
+		else if (getData(stack).length > 0)
 			return getData(stack);
-		return -1;
+		return DEFAULT_COLORS;
 	}
 
 	@Override
-	public void onRightClickBlock(UseItemOnBlockEvent event)
-	{
-		if(!InfusedPropertiesHelper.hasInfusedProperty(event.getItemStack(), asHolder()))
+	public void onRightClickBlock(UseItemOnBlockEvent event) {
+		if (!InfusedPropertiesHelper.hasInfusedProperty(event.getItemStack(), asHolder()))
 			return;
 
 		BlockState state = event.getLevel().getBlockState(event.getPos());
-		if(state.getBlock() instanceof AbstractCauldronBlock cauldron && ((AbstractCauldronAccessor)cauldron).getInteractions().equals(CauldronInteraction.WATER))
-		{
-			if(state.hasProperty(LayeredCauldronBlock.LEVEL))
+		if (state.getBlock() instanceof AbstractCauldronBlock cauldron && ((AbstractCauldronAccessor) cauldron).getInteractions().equals(CauldronInteraction.WATER)) {
+			if (state.hasProperty(LayeredCauldronBlock.LEVEL))
 				LayeredCauldronBlock.lowerFillLevel(state, event.getLevel(), event.getPos());
 			setData(event.getItemStack(), getDefaultData());
 			InfusedPropertiesHelper.removeProperty(event.getItemStack(), asHolder());
@@ -81,46 +95,70 @@ public class TintedProperty extends Property implements IDataHolder<Integer>, IT
 	}
 
 	@Override
-	public int getTint(ItemStack stack, int tintIndex, int originalTint, int currentTint)
-	{
+	public int getTint(ItemStack stack, int tintIndex, int originalTint, int currentTint) {
 		boolean tintBase = stack.is(AlchemancyTags.Items.TINT_BASE_LAYER);
 		boolean dontTintBase = stack.is(AlchemancyTags.Items.DONT_TINT_BASE_LAYER);
 		return (tintBase && dontTintBase) || (tintBase && tintIndex > 0) || (dontTintBase && tintIndex == 0) ?
-						currentTint : FastColor.ARGB32.color(FastColor.ARGB32.alpha(currentTint), getData(stack));
+				currentTint : FastColor.ARGB32.color(FastColor.ARGB32.alpha(currentTint), getColor(stack));
 	}
 
 	@Override
-	public Integer readData(CompoundTag tag) {
-		return tag.getInt("color");
+	public Integer[] readData(CompoundTag tag) {
+		return tag.contains("colors", CompoundTag.TAG_INT_ARRAY) ? toIntegerArray(tag.getIntArray("colors")) : new Integer[]{tag.getInt("color")};
+	}
+
+
+	@Override
+	public CompoundTag writeData(Integer[] data) {
+		return new CompoundTag() {{
+			putIntArray("colors", Arrays.stream(data).mapToInt(Integer::valueOf).toArray());
+		}};
 	}
 
 	@Override
-	public CompoundTag writeData(Integer data) {
-		return new CompoundTag(){{putInt("color", data);}};
+	public Integer[] combineData(Integer @Nullable [] currentData, Integer[] newData) {
+		return mixColors(currentData, newData);
+	}
+
+	public void setData(ItemStack stack, int value) {
+		IDataHolder.super.setData(stack, new Integer[]{value});
 	}
 
 	@Override
-	public Integer getDefaultData() {
-		return DEFAULT_COLOR;
+	public Integer[] getDefaultData() {
+		return DEFAULT_COLORS;
 	}
+
+	private static final int[] DYE_COLORS = Arrays.stream(DyeColor.values()).mapToInt(DyeColor::getTextureDiffuseColor).toArray();
 
 	@Override
 	public int getColor(ItemStack stack) {
-		return getData(stack);
+		var colors = getData(stack);
+
+		if(colors.length == 0 && InfusedPropertiesHelper.hasDormantProperty(stack, asHolder()))
+			return -1;
+
+		return colors.length == 0 ?
+				ColorUtils.interpolateColorsAndWait(1, 1, DYE_COLORS) :
+				ColorUtils.interpolateColorsOverTime(1, Arrays.stream(colors).mapToInt(Integer::valueOf).toArray());
 	}
+
+	private Integer[] toIntegerArray(int... numbers) {
+		return Arrays.stream(numbers).boxed().toArray(Integer[]::new);
+	}
+
 
 	@Override
 	public Component getName(ItemStack stack) {
-		return super.getName(stack).copy().withColor(getDyeColor(stack));
+		int[] colors = Arrays.stream(getDyeColor(stack)).mapToInt(Integer::valueOf).toArray();
+		return colors.length == 0 ? super.getName(stack) : super.getName(stack).copy().withColor(ColorUtils.interpolateColorsOverTime(1, colors));
 	}
 
 	@Override
-	public Collection<ItemStack> populateCreativeTab(DeferredItem<Item> capsuleItem, Holder<Property> holder)
-	{
+	public Collection<ItemStack> populateCreativeTab(DeferredItem<Item> capsuleItem, Holder<Property> holder) {
 		ArrayList<ItemStack> result = new ArrayList<>();
 
-		for(DyeColor dye : DyeColor.values())
-		{
+		for (DyeColor dye : DyeColor.values()) {
 			ItemStack stack = capsuleItem.toStack();
 			stack.set(AlchemancyItems.Components.STORED_PROPERTIES, new InfusedPropertiesComponent(List.of(holder)));
 			setData(stack, dye.getTextureDiffuseColor());
@@ -128,6 +166,21 @@ public class TintedProperty extends Property implements IDataHolder<Integer>, IT
 		}
 
 		return result;
+	}
+
+	public static Integer[] mixColors(Integer[] base, Integer[] colors) {
+
+		if (colors.length == 0)
+			return base;
+
+		if (base.length == 0)
+			return colors;
+		else {
+			for (int i = 0; i < base.length; i++) {
+				base[i] = base[i] == DEFAULT_COLOR ? FastColor.ARGB32.color(255, colors[Math.min(i, colors.length-1)]) : mixColors(base[i], List.of(colors[Math.min(i, colors.length-1)]));
+			}
+			return base;
+		}
 	}
 
 	public static int mixColors(int base, List<Integer> dyes) {
@@ -162,11 +215,11 @@ public class TintedProperty extends Property implements IDataHolder<Integer>, IT
 			int l2 = i / i1;
 			int i3 = j / i1;
 			int k3 = k / i1;
-			float f = (float)l / (float)i1;
-			float f1 = (float)Math.max(l2, Math.max(i3, k3));
-			l2 = (int)((float)l2 * f / f1);
-			i3 = (int)((float)i3 * f / f1);
-			k3 = (int)((float)k3 * f / f1);
+			float f = (float) l / (float) i1;
+			float f1 = (float) Math.max(l2, Math.max(i3, k3));
+			l2 = (int) ((float) l2 * f / f1);
+			i3 = (int) ((float) i3 * f / f1);
+			k3 = (int) ((float) k3 * f / f1);
 			return FastColor.ARGB32.color(0, l2, i3, k3);
 		}
 	}

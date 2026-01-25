@@ -5,6 +5,7 @@ import net.cibernet.alchemancy.blocks.blockentities.RootedItemBlockEntity;
 import net.cibernet.alchemancy.crafting.ForgePropertyRecipe;
 import net.cibernet.alchemancy.crafting.ForgeRecipeGrid;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesHelper;
+import net.cibernet.alchemancy.properties.special.LivingBatteryProperty;
 import net.cibernet.alchemancy.registries.AlchemancyProperties;
 import net.cibernet.alchemancy.util.ColorUtils;
 import net.cibernet.alchemancy.util.InfusionPropertyDispenseBehavior;
@@ -15,6 +16,7 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -49,10 +51,10 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import net.neoforged.neoforge.common.ItemAbility;
 import net.neoforged.neoforge.common.util.TriState;
 import net.neoforged.neoforge.event.ItemAttributeModifierEvent;
-import net.neoforged.neoforge.event.ItemStackedOnOtherEvent;
 import net.neoforged.neoforge.event.enchanting.GetEnchantmentLevelEvent;
 import net.neoforged.neoforge.event.entity.ProjectileImpactEvent;
 import net.neoforged.neoforge.event.entity.item.ItemTossEvent;
@@ -70,6 +72,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -361,12 +364,12 @@ public abstract class Property
 
 	public static ItemStack consumeItem(@Nullable Entity user, ItemStack stack, @Nullable EquipmentSlot brokenOnSlot)
 	{
-		stack.shrink(1);
 		if (brokenOnSlot != null && user instanceof Player player)
 		{
 			player.onEquippedItemBroken(stack.getItem(), brokenOnSlot);
 			player.awardStat(Stats.ITEM_BROKEN.get(stack.getItem()));
 		}
+		stack.shrink(1);
 		return stack;
 	}
 
@@ -419,12 +422,12 @@ public abstract class Property
 	public void onUserDeath(LivingEntity entity, ItemStack stack, EquipmentSlot slot, LivingDeathEvent event) {
 	}
 
-	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd)
+	public boolean onInfusedByDormantProperty(ItemStack stack, ItemStack propertySource, ForgeRecipeGrid grid, List<Holder<Property>> propertiesToAdd, AtomicBoolean consumeItem)
 	{
 		return !InfusedPropertiesHelper.hasInfusedProperty(stack, asHolder());
 	}
 
-	public void onInfusedByForgeRecipe(ItemStack stack, RecipeHolder<ForgePropertyRecipe> recipe, ForgeRecipeGrid grid)
+	public void onInfusedByForgeRecipe(ItemStack stack, ForgePropertyRecipe recipe, ForgeRecipeGrid grid)
 	{
 
 	}
@@ -441,11 +444,11 @@ public abstract class Property
 
 	}
 
-	public void onStackedOverItem(ItemStack stackedOnItem, ItemStack stack, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled) {
+	public void onStackedOverItem(ItemStack stack, ItemStack stackedOnItem, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled) {
 
 	}
 
-	public void onStackedOverMe(ItemStack stack, ItemStack carriedItem, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled) {
+	public void onStackedOverMe(ItemStack carriedItem, ItemStack stack, Player player, ClickAction clickAction, SlotAccess carriedSlot, Slot stackedOnSlot, AtomicBoolean isCancelled) {
 
 	}
 
@@ -507,6 +510,43 @@ public abstract class Property
 
 	public void isMobEffectApplicable(ItemStack stack, EquipmentSlot slot, LivingEntity user, MobEffectEvent.Applicable event) {
 
+	}
+
+	public int onItemRepaired(ItemStack stack, int amount, int originalAmount) {
+		return amount;
+	}
+
+	public boolean onEntityItemBelowWorld(ItemStack stack, ItemEntity itemEntity) {
+		return false;
+	}
+
+	public static boolean canRepair(ItemStack stack) {
+		return canRepair(stack, 1);
+	}
+	public static boolean canRepair(ItemStack stack, int amountToRepair) {
+
+		if(InfusedPropertiesHelper.hasProperty(stack, AlchemancyProperties.LIVING_BATTERY)) {
+			var energy = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+			if(energy != null && energy.receiveEnergy(amountToRepair * LivingBatteryProperty.CONVERSION, true) > 0)
+				return true;
+		}
+
+		return stack.isDamageableItem() && stack.getDamageValue() >= amountToRepair;
+	}
+
+	public static void repairItem(ItemStack stack, int amount) {
+
+		AtomicInteger newAmount = new AtomicInteger(amount);
+		InfusedPropertiesHelper.forEachProperty(stack, propertyHolder ->
+				newAmount.set(propertyHolder.value().onItemRepaired(stack, newAmount.get(), amount)));
+
+		if(newAmount.get() > 0 && stack.isDamaged())
+			stack.setDamageValue(Math.max(0, stack.getDamageValue()- newAmount.get()));
+	}
+
+	public final TagKey<Item> getDormantPropertyTag() {
+		ResourceLocation id = asHolder().getKey().location();
+		return TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(id.getNamespace(), "dormant_properties/" + id.getPath()));
 	}
 
 	public static class Priority

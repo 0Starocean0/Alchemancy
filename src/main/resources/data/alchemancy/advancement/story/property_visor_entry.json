@@ -1,5 +1,5 @@
 {
-  "parent": "alchemancy:story/apply_property",
+  "parent": "alchemancy:story/find_netherite",
   "criteria": {
     "discover_revealing": {
       "conditions": {
@@ -17,7 +17,7 @@
       "conditions": {
         "items": [
           {
-            "items": "alchemancy:dreamsteel_ingot"
+            "items": "minecraft:netherite_ingot"
           }
         ]
       },

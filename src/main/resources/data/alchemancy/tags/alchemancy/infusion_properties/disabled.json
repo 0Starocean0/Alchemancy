@@ -1,8 +1,5 @@
 {
   "values": [
-    "alchemancy:quantum_bind",
-    "alchemancy:voidtouch",
-    "alchemancy:ceaseless_void",
-    "alchemancy:block_vacuum"
+    "alchemancy:ceaseless_void"
   ]
 }

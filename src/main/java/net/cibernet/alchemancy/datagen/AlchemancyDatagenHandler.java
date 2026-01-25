@@ -4,7 +4,6 @@ import net.cibernet.alchemancy.Alchemancy;
 import net.cibernet.alchemancy.advancements.criterion.DiscoverPropertyTrigger;
 import net.cibernet.alchemancy.item.components.InfusedPropertiesHelper;
 import net.cibernet.alchemancy.properties.Property;
-import net.cibernet.alchemancy.registries.AlchemancyCreativeTabs;
 import net.cibernet.alchemancy.registries.AlchemancyItems;
 import net.cibernet.alchemancy.registries.AlchemancyProperties;
 import net.minecraft.advancements.*;
@@ -43,6 +42,11 @@ public class AlchemancyDatagenHandler
 				AlchemancyDatagenHandler::getAlchemancyMasterAdvancement
 		)));
 
+		generator.addProvider(event.includeClient(), new AlchemancyLangProvider(output));
+		generator.addProvider(event.includeClient(), new CodexEntryProvider(lookupProvider, output));
+
+		generator.addProvider(event.includeClient(), new AlchemancyPropertyTagsProvider(output, lookupProvider, fileHelper));
+
 		//generator.addProvider(event.includeClient(), new PropertyEntryProvider(output, lookupProvider, AlchemancyProperties.WARPED));
 	}
 
@@ -72,16 +76,22 @@ public class AlchemancyDatagenHandler
 		}
 	}
 
-	private static final List<Holder<Property>> UNOBTAINABLE_PROPERTIES = List.of(
+	public static final List<Holder<Property>> UNINFUSABLE_PROPERTIES = List.of(
+			//Always unobtainable
 			AlchemancyProperties.CLAY_MOLD,
-			AlchemancyProperties.SMITING,
-			AlchemancyProperties.AUXILIARY,
+			AlchemancyProperties.BADA_QUIP,
 			AlchemancyProperties.RANDOM,
-			AlchemancyProperties.ITEM_MAGNET,
-			AlchemancyProperties.QUANTUM_BIND,
-			AlchemancyProperties.BLOCK_VACUUM,
-			AlchemancyProperties.VOIDTOUCH,
-			AlchemancyProperties.CEASELESS_VOID
+			AlchemancyProperties.WORLD_OBLITERATOR,
+			AlchemancyProperties.AUXILIARY,
+
+			//Obtainable in a later update
+			AlchemancyProperties.SMITING,
+			AlchemancyProperties.BATTERY_POWERED,
+			AlchemancyProperties.LIVING_BATTERY,
+			AlchemancyProperties.CEASELESS_VOID,
+
+			//Obtainable but not via the forge
+			AlchemancyProperties.UNMOVABLE
 	);
 
 	public static void getAlchemancyMasterAdvancement(HolderLookup.Provider registries, Consumer<AdvancementHolder> saver, ExistingFileHelper existingFileHelper)
@@ -103,7 +113,7 @@ public class AlchemancyDatagenHandler
 		List<String> requirements = new ArrayList<>();
 		for (DeferredHolder<Property, ? extends Property> property : AlchemancyProperties.REGISTRY.getEntries()) {
 
-			if(UNOBTAINABLE_PROPERTIES.contains(property))
+			if(UNINFUSABLE_PROPERTIES.contains(property))
 				continue;
 
 			String key = "discover_" + property.get().getKey().toString();

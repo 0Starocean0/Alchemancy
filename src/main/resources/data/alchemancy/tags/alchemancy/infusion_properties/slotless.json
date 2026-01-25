@@ -5,6 +5,9 @@
     "alchemancy:seethrough",
     "alchemancy:concealed",
     "alchemancy:disguised",
-    "alchemancy:flattened"
+    "alchemancy:flattened",
+    "alchemancy:unmovable",
+    "alchemancy:sparkling",
+    "alchemancy:toggleable"
   ]
 }

@@ -43,9 +43,9 @@ public class ForgePropertyRecipe extends AbstractForgeRecipe<List<Holder<Propert
 	final List<Holder<Property>> result;
 
 
-	public ForgePropertyRecipe(Optional<Ingredient> catalyst, Optional<String> catalystName, List<EssenceContainer> essences, List<Ingredient> infusables, List<Holder<Property>> infusedProperties, List<Holder<Property>> result)
+	public ForgePropertyRecipe(Optional<Ingredient> catalyst, Optional<String> catalystName, List<Ingredient> infusables, List<Holder<Property>> infusedProperties, List<Holder<Property>> result)
 	{
-		super(catalyst, catalystName, essences, infusables, infusedProperties);
+		super(catalyst, catalystName, infusables, infusedProperties);
 		this.result = result;
 	}
 
@@ -57,7 +57,17 @@ public class ForgePropertyRecipe extends AbstractForgeRecipe<List<Holder<Propert
 
 	@Override
 	public boolean matches(ForgeRecipeGrid input, Level level) {
-		return checkParadoxical(input.getCurrentOutput()) && super.matches(input, level);
+
+		if(checkParadoxical(input.getCurrentOutput()) && super.matches(input, level))
+		{
+			for (Holder<Property> propertyHolder : result) {
+				if(!InfusedPropertiesHelper.canInfuseWithProperty(input.getCurrentOutput(), propertyHolder))
+					return false;
+			}
+			return true;
+		}
+
+		return false;
 	}
 
 	@Override
@@ -80,6 +90,7 @@ public class ForgePropertyRecipe extends AbstractForgeRecipe<List<Holder<Propert
 		return (input, registries, resultItem) ->
 		{
 			for (Holder<Property> propertyHolder : result) {
+				propertyHolder.value().onInfusedByForgeRecipe(resultItem, this, input);
 				InfusedPropertiesHelper.addProperty(resultItem, propertyHolder);
 			}
 			return resultItem;
@@ -88,7 +99,7 @@ public class ForgePropertyRecipe extends AbstractForgeRecipe<List<Holder<Propert
 
 	@Override
 	public ItemStack getResultItem(HolderLookup.Provider registries) {
-		return InfusedPropertiesHelper.createPropertyIngredient(result);
+		return result.isEmpty() ? ItemStack.EMPTY : InfusedPropertiesHelper.createPropertyIngredient(result);
 	}
 
 	@Override

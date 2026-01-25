@@ -107,7 +107,8 @@ public class MusicalProperty extends Property
 			Vec3 pos = root.getBlockPos().getBottomCenter();
 			Level level = root.getLevel();
 
-			level.addParticle(ParticleTypes.NOTE, pos.x, pos.y + random.nextDouble(), pos.z, 0.0D, 0.0D, 0.0D);
+			level.addParticle(SparklingProperty.getParticles(root.getItem()).orElse(ParticleTypes.NOTE),
+					pos.x, pos.y + random.nextDouble(), pos.z, 0.0D, 0.0D, 0.0D);
 		}
 	}
 
@@ -115,6 +116,8 @@ public class MusicalProperty extends Property
 	{
 		if(InfusedPropertiesHelper.hasProperty(stack, AlchemancyProperties.CLUELESS))
 			return AlchemancySoundEvents.CLUELESS.value();
+		if(InfusedPropertiesHelper.hasProperty(stack, AlchemancyProperties.HOME_RUN))
+			return AlchemancySoundEvents.HOME_RUN_FAIL.value();
 
 		for(TagKey<Item> tag : ON_CLICK_SOUNDS.keySet())
 			if(stack.is(tag))
